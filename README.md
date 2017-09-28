@@ -15,25 +15,30 @@ it was created.
 
 ## Wait...
 
-"Didn't `locals()` already do that?"
+"Doesn't `locals()` already do that?"
 
 At the global or module scope, the `locals()` and `globals()`
 functions both return the module's underlying `__dict__`. Once you're
 inside of a function however, things change. In a function, the
-`locals()` is just a snapshot view of the local fast, free, and cell
+`locals()` is just a snapshot view of the frame's fast, free, and cell
 variables.
 
 
-## Such a Memory Leak
+## Circular Reference
 
-Sadly, Python doesn't allow weak references to frame objects.
+Sadly, Python doesn't allow weak references to frame objects. The
+livelocals objects therefore have strong references to the particular
+frame they were invoked from. If that frame also happens to have a
+lingering reference to the livelocals object, then a circular
+reference exists.
 
-The livelocals objects therefore have hard references to the
-particular frame they were invoked from.  If that frame also happens
-to have a lingering reference to the livelocals object, then a
-circular reference exists.
+The Python GC is able to collect circular references. It knows how to
+traverse frame instances and break those links if the cluster of
+objects are isolated from running code. However that's somewhat
+expensive, and we can prevent it easily.
 
-For example, this is a memory leak
+For example, this will require the GC to run over the frame before the
+frame or any of its variables can be deallocated.
 ```python
 def such_leak(data):
 	x = do_something(data)
@@ -47,8 +52,8 @@ The livelocals instance refers to the frame, and the frame never
 cleared the value of the variable `l` which is a reference to the
 livelocals. Circular reference!
 
-Make sure to do this:
-
+To fix this, just make sure to delete any reference to the livelocals
+object.
 ```python
 def fine_dandy(data):
 	x = do_something(data)
@@ -59,9 +64,9 @@ def fine_dandy(data):
 	return y
 ```
 
-There's no reference to the livelocals instance anymore, so it will
-get GC'd, which will cause its references to the frame to evaporate,
-allowing the frame to also get GC'd
+This decrements the livelocals ref count, letting it be deallocated
+right away, which also clears the references it had to the frame, so
+it can be similarly deallocated.
 
 
 ## Supported Versions
