@@ -34,43 +34,37 @@
 #include <frameobject.h>
 
 
-
 static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
-  PyObject *result = NULL;
   int index = -1;
+  PyObject **fast = NULL;
+  PyObject *result = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  // fetch the appropriate fast var from frame->f_localsplus
-
-  PyObject **fast = frame->f_localsplus;
+  fast = frame->f_localsplus;
 
   result = fast[index];
-  Py_INCREF(result);
+  Py_XINCREF(result);
   return result;
 }
 
 
 static PyObject *frame_set_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
-  PyObject *value = NULL;
-  PyObject *old = NULL;
   int index = -1;
+  PyObject *value = NULL;
+  PyObject **fast = NULL;
 
   if (! PyArg_ParseTuple(args, "O!iO", &PyFrame_Type, &frame, &index, &value))
     return NULL;
 
-  // assign the appropriate fast var from frame->f_localsplus
+  fast = frame->f_localsplus;
 
-  PyObject **fast = frame->f_localsplus;
-
-  old = fast[index];
-
-  Py_INCREF(value);
+  Py_CLEAR(fast[index]);
   fast[index] = value;
-  Py_XDECREF(old);
+  Py_INCREF(value);
 
   Py_RETURN_NONE;
 }
@@ -78,19 +72,14 @@ static PyObject *frame_set_fast(PyObject *self, PyObject *args) {
 
 static PyObject *frame_del_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
-  PyObject *old = NULL;
   int index = -1;
+  PyObject **fast = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  // clear the appropriate fast var from frame->f_localsplus
-
-  PyObject **fast = frame->f_localsplus;
-
-  old = fast[index];
-  fast[index] = NULL;
-  Py_XDECREF(old);
+  fast = frame->f_localsplus;
+  Py_CLEAR(fast[index]);
 
   Py_RETURN_NONE;
 }
@@ -99,11 +88,12 @@ static PyObject *frame_del_fast(PyObject *self, PyObject *args) {
 static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
+  PyObject **fast = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  PyObject **fast = frame->f_localsplus;
+  fast = frame->f_localsplus;
   return PyCell_Get(fast[index]);
 }
 
@@ -112,12 +102,14 @@ static PyObject *frame_set_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   PyObject *value = NULL;
   int index = -1;
+  PyObject **fast = NULL;
 
   if (! PyArg_ParseTuple(args, "O!iO", &PyFrame_Type, &frame, &index, &value))
     return NULL;
 
-  PyObject **fast = frame->f_localsplus;
+  fast = frame->f_localsplus;
   PyCell_Set(fast[index], value);
+
   Py_RETURN_NONE;
 }
 
@@ -125,12 +117,14 @@ static PyObject *frame_set_cell(PyObject *self, PyObject *args) {
 static PyObject *frame_del_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
+  PyObject **fast = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  PyObject **fast = frame->f_localsplus;
+  fast = frame->f_localsplus;
   PyCell_Set(fast[index], NULL);
+
   Py_RETURN_NONE;
 }
 
@@ -158,9 +152,34 @@ static PyMethodDef methods[] = {
 };
 
 
+#if PY_MAJOR_VERSION >= 3
+/* Python 3 Mode */
+
+
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "livelocals._frame",
+  NULL,
+  -1,
+  methods,
+};
+
+
+PyMODINIT_FUNC PyInit__frame() {
+  Py_Initialize();
+  return PyModule_Create(&moduledef);
+}
+
+
+#else
+/* Python 2 Mode */
+
+
 PyMODINIT_FUNC init_frame() {
   Py_InitModule("livelocals._frame", methods);
 }
+
+#endif
 
 
 /* The end. */
