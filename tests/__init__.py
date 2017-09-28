@@ -82,6 +82,8 @@ class TestLiveLocals(TestCase):
         self.assertEqual(outer_value, 123)
         self.assertEqual(ll["outer_value"], 123)
 
+        del ll
+
 
     def test_del(self):
 
@@ -113,6 +115,8 @@ class TestLiveLocals(TestCase):
         ll["outer_value"] = 456
         self.assertEqual(getter_2(), 456)
 
+        del ll
+
 
     def test_intern(self):
 
@@ -121,6 +125,14 @@ class TestLiveLocals(TestCase):
 
         self.assertTrue(ll1 is ll2)
         self.assertEqual(repr(ll1), repr(ll2))
+
+        def make_inner():
+            return livelocals()
+
+        ll1 = make_inner()
+        ll2 = make_inner()
+
+        self.assertFalse(ll1 is ll2)
 
 
 #
