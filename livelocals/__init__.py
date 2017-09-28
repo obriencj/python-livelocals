@@ -16,7 +16,7 @@
 """
 livelocals
 
-A read-write view into a frame's local variables.
+An active read/write view into a frame's local variables.
 
 author: Christopher O'Brien  <obriencj@gmail.com>
 license: LGPL v.3
@@ -26,8 +26,19 @@ license: LGPL v.3
 from collections import namedtuple
 from functools import partial
 from inspect import currentframe
+from sys import version_info
+from weakref import WeakValueDictionary
 
-from livelocals._frame import *
+from livelocals._frame import \
+    frame_get_fast, frame_set_fast, frame_del_fast, \
+    frame_get_cell, frame_set_cell, frame_del_cell
+
+
+if (2, 0) <= version_info < (3, 0):
+    from itertools import imap
+
+
+__all__ = ("livelocals", )
 
 
 _ref = namedtuple("_ref", ("get_ref", "set_ref", "del_ref"))
@@ -47,14 +58,30 @@ def _create_cell_ref(frame, index):
 
 class LiveLocals(object):
     """
+    Living view of a frame's local fast, free, and cell variables.
     """
+
+
+    _intern = WeakValueDictionary()
+
+
+    def __new__(cls, frame=None):
+        if frame is None:
+            frame = currentframe().f_back
+
+        found = cls._intern.get(frame, None)
+        if found is None:
+            found = super(LiveLocals, cls).__new__(cls)
+            cls._intern[frame] = found
+
+        return found
 
 
     def __init__(self, frame=None):
         if frame is None:
             frame = currentframe().f_back
 
-        self._repr = "<live locals for frame %r>" % frame
+        self._frame = frame
         self._refs = refs = {}
 
         code = frame.f_code
@@ -71,12 +98,22 @@ class LiveLocals(object):
             refs[name] = _create_cell_ref(frame, i + offset)
 
 
+    def __del__(self):
+        self._refs.clear()
+
+
     def __repr__(self):
-        return self._repr
+        return "<livelocals for frame at 0x%08x>" % id(self._frame)
 
 
     def __getitem__(self, key):
-        return self._refs[key].get_ref()
+        try:
+            return self._refs[key].get_ref()
+        except NameError as ne:
+            msg = "name %r is not defined" % key
+            ne.message = msg
+            ne.args = (msg, )
+            raise
 
 
     def __setitem__(self, key, value):
@@ -85,6 +122,82 @@ class LiveLocals(object):
 
     def __delitem__(self, key):
         return self._refs[key].del_ref()
+
+
+    def __contains__(self, key):
+        return key in self._refs
+
+
+    if (3, 0) <= version_info:
+        # Python 3 mode
+
+        def keys(self):
+            return map(lambda r: r[0], self.items())
+
+
+        def values(self):
+            return map(lambda r: r[1], self.values())
+
+
+        def items(self):
+            for key, ref in self._refs.items():
+                try:
+                    yield (key, ref.get_ref())
+                except NameError:
+                    pass
+
+
+    else:
+        # Python 2 mode
+
+        def iterkeys(self):
+            return imap(lambda r: r[0], self.iteritems())
+
+
+        def keys(self):
+            return list(self.iterkeys())
+
+
+        def itervalues(self):
+            return imap(lambda r: r[1], self.iteritems())
+
+
+        def values(self):
+            return list(self.itervalues())
+
+
+        def iteritems(self):
+            for key, ref in self._refs.iteritems():
+                try:
+                    yield (key, ref.get_ref())
+                except NameError:
+                    pass
+
+
+        def items(self):
+            return list(self.iteritems())
+
+
+    def get(self, key, default=None):
+        try:
+            return self._refs[key].get_ref()
+        except NameError:
+            return default
+
+
+    def update(self, mapping):
+        refs = self._refs
+        for key, val in mapping.items():
+            if key in refs:
+                refs[key].set_ref(val)
+
+
+    def setdefault(self, key, default=None):
+        try:
+            return self._refs[key].get_ref()
+        except NameError:
+            self._refs[key].set_ref(default)
+            return default
 
 
 livelocals = LiveLocals

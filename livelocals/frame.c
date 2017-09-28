@@ -47,6 +47,11 @@ static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
 
   result = fast[index];
   Py_XINCREF(result);
+
+  if (! result) {
+    PyErr_SetString(PyExc_NameError, "");
+  }
+
   return result;
 }
 
@@ -89,12 +94,19 @@ static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
   PyObject **fast = NULL;
+  PyObject *result = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
   fast = frame->f_localsplus;
-  return PyCell_Get(fast[index]);
+  result = PyCell_Get(fast[index]);
+
+  if (! result) {
+    PyErr_SetString(PyExc_NameError, "");
+  }
+
+  return result;
 }
 
 
