@@ -119,7 +119,7 @@ class TestLiveLocals(TestCase):
         ll1 = livelocals()
         ll2 = livelocals()
 
-        self.assertIs(ll1, ll2)
+        self.assertTrue(ll1 is ll2)
         self.assertEqual(repr(ll1), repr(ll2))
 
 
