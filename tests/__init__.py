@@ -83,5 +83,45 @@ class TestLiveLocals(TestCase):
         self.assertEqual(ll["outer_value"], 123)
 
 
+    def test_del(self):
+
+        outer_value = 777
+
+        def get_outer_value():
+            return outer_value
+
+        def make_closure(value=None):
+            def val_1_getter():
+                return value
+            def val_2_getter():
+                return outer_value;
+            return val_1_getter, val_2_getter, livelocals()
+
+        getter_1, getter_2, ll = make_closure(999)
+
+        self.assertEqual(getter_1(), 999)
+        del ll["value"]
+        self.assertRaises(NameError, getter_1)
+        ll["value"] = 123
+        self.assertEqual(getter_1(), 123)
+
+        self.assertEqual(getter_2(), 777)
+        del ll["outer_value"]
+        self.assertRaises(NameError, getter_2)
+        self.assertRaises(NameError, get_outer_value)
+
+        ll["outer_value"] = 456
+        self.assertEqual(getter_2(), 456)
+
+
+    def test_intern(self):
+
+        ll1 = livelocals()
+        ll2 = livelocals()
+
+        self.assertIs(ll1, ll2)
+        self.assertEqual(repr(ll1), repr(ll2))
+
+
 #
 # The end.
