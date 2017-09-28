@@ -16,7 +16,7 @@
 """
 livelocals
 
-An active read/write view into a frame's local variables.
+A living read/write view into a frame's local variables.
 
 author: Christopher O'Brien  <obriencj@gmail.com>
 license: LGPL v.3
@@ -41,7 +41,7 @@ if (2, 0) <= version_info < (3, 0):
 __all__ = ("livelocals", )
 
 
-_ref = namedtuple("_ref", ("get_ref", "set_ref", "del_ref"))
+_ref = namedtuple("_ref", ("get_ref", "set_ref", "del_ref", ))
 
 
 def _create_fast_ref(frame, index):
@@ -62,6 +62,8 @@ class LiveLocals(object):
     """
 
 
+    __slots__ = ("_frame_id", "_refs", "__weakref__", )
+
     _intern = WeakValueDictionary()
 
 
@@ -81,7 +83,7 @@ class LiveLocals(object):
         if frame is None:
             frame = currentframe().f_back
 
-        self._frame = frame
+        self._frame_id = id(frame)
         self._refs = refs = {}
 
         code = frame.f_code
@@ -98,18 +100,18 @@ class LiveLocals(object):
             refs[name] = _create_cell_ref(frame, i + offset)
 
 
-    def __del__(self):
-        self._refs.clear()
-
-
     def __repr__(self):
-        return "<livelocals for frame at 0x%08x>" % id(self._frame)
+        return "<livelocals for frame at 0x%08x>" % self._frame_id
 
 
     def __getitem__(self, key):
         try:
             return self._refs[key].get_ref()
+
         except NameError as ne:
+            # TODO: make the extension do this on its own.
+            # Issue #6
+
             msg = "name %r is not defined" % key
             ne.message = msg
             ne.args = (msg, )
