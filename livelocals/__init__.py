@@ -41,17 +41,17 @@ if (2, 0) <= version_info < (3, 0):
 __all__ = ("livelocals", )
 
 
-_ref = namedtuple("_ref", ("get_ref", "set_ref", "del_ref", ))
+_var = namedtuple("_var", ("get_var", "set_var", "del_var", ))
 
 
-def _create_fast_ref(frame, index):
-    return _ref(partial(frame_get_fast, frame, index),
+def _create_fast_var(frame, index):
+    return _var(partial(frame_get_fast, frame, index),
                 partial(frame_set_fast, frame, index),
                 partial(frame_del_fast, frame, index))
 
 
-def _create_cell_ref(frame, index):
-    return _ref(partial(frame_get_cell, frame, index),
+def _create_cell_var(frame, index):
+    return _var(partial(frame_get_cell, frame, index),
                 partial(frame_set_cell, frame, index),
                 partial(frame_del_cell, frame, index))
 
@@ -62,7 +62,7 @@ class LiveLocals(object):
     """
 
 
-    __slots__ = ("_frame_id", "_refs", "__weakref__", )
+    __slots__ = ("_frame_id", "_vars", "__weakref__", )
 
     _intern = WeakValueDictionary()
 
@@ -84,20 +84,19 @@ class LiveLocals(object):
             frame = currentframe().f_back
 
         self._frame_id = id(frame)
-        self._refs = refs = {}
+        self._vars = vars = {}
 
         code = frame.f_code
 
+        i = -1
         for i, name in enumerate(code.co_varnames):
-            refs[name] = _create_fast_ref(frame, i)
+            vars[name] = _create_fast_var(frame, i)
 
-        offset = code.co_nlocals
-        for i, name in enumerate(code.co_cellvars):
-            refs[name] = _create_cell_ref(frame, i + offset)
+        for i, name in enumerate(code.co_cellvars, i + 1):
+            vars[name] = _create_cell_var(frame, i)
 
-        offset += len(code.co_cellvars)
-        for i, name in enumerate(code.co_freevars):
-            refs[name] = _create_cell_ref(frame, i + offset)
+        for i, name in enumerate(code.co_freevars, i + 1):
+            vars[name] = _create_cell_var(frame, i)
 
 
     def __repr__(self):
@@ -106,7 +105,7 @@ class LiveLocals(object):
 
     def __getitem__(self, key):
         try:
-            return self._refs[key].get_ref()
+            return self._vars[key].get_var()
 
         except NameError as ne:
             # TODO: make the extension do this on its own.
@@ -119,15 +118,15 @@ class LiveLocals(object):
 
 
     def __setitem__(self, key, value):
-        return self._refs[key].set_ref(value)
+        return self._vars[key].set_var(value)
 
 
     def __delitem__(self, key):
-        return self._refs[key].del_ref()
+        return self._vars[key].del_var()
 
 
     def __contains__(self, key):
-        return key in self._refs
+        return key in self._vars
 
 
     if (3, 0) <= version_info:
@@ -142,9 +141,9 @@ class LiveLocals(object):
 
 
         def items(self):
-            for key, ref in self._refs.items():
+            for key, ref in self._vars.items():
                 try:
-                    yield (key, ref.get_ref())
+                    yield (key, ref.get_var())
                 except NameError:
                     pass
 
@@ -169,9 +168,9 @@ class LiveLocals(object):
 
 
         def iteritems(self):
-            for key, ref in self._refs.iteritems():
+            for key, ref in self._vars.iteritems():
                 try:
-                    yield (key, ref.get_ref())
+                    yield (key, ref.get_var())
                 except NameError:
                     pass
 
@@ -182,23 +181,23 @@ class LiveLocals(object):
 
     def get(self, key, default=None):
         try:
-            return self._refs[key].get_ref()
+            return self._vars[key].get_var()
         except NameError:
             return default
 
 
     def update(self, mapping):
-        refs = self._refs
+        refs = self._vars
         for key, val in mapping.items():
             if key in refs:
-                refs[key].set_ref(val)
+                refs[key].set_var(val)
 
 
     def setdefault(self, key, default=None):
         try:
-            return self._refs[key].get_ref()
+            return self._vars[key].get_var()
         except NameError:
-            self._refs[key].set_ref(default)
+            self._vars[key].set_var(default)
             return default
 
 
