@@ -34,6 +34,46 @@
 #include <frameobject.h>
 
 
+static void name_error(PyFrameObject *frame, int index) {
+  PyCodeObject *code = frame->f_code;
+  PyObject *name = NULL;
+  int count = 0;
+
+  count = code->co_nlocals;
+  if (index < count) {
+    name = PyTuple_GET_ITEM(code->co_varnames, index);
+    goto found;
+  }
+
+  index -= count;
+  count = PyTuple_GET_SIZE(code->co_cellvars);
+  if (count && index < count) {
+    name = PyTuple_GET_ITEM(code->co_cellvars, index);
+    goto found;
+  }
+
+  index -= count;
+  count = PyTuple_GET_SIZE(code->co_freevars);
+  if (count && index < count) {
+    name = PyTuple_GET_ITEM(code->co_freevars, index);
+    goto found;
+  }
+
+  PyErr_SetString(PyExc_NameError, "name <unknown> is not defined");
+  return;
+
+ found:
+
+#if PY_MAJOR_VERSION >= 3
+  PyErr_Format(PyExc_NameError, "name '%.200s' is not defined",
+	       PyUnicode_AsUTF8(name));
+#else
+  PyErr_Format(PyExc_NameError, "name '%.200s' is not defined",
+	       PyString_AsString(name));
+#endif
+}
+
+
 static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -48,9 +88,8 @@ static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   result = fast[index];
   Py_XINCREF(result);
 
-  if (! result) {
-    PyErr_SetString(PyExc_NameError, "");
-  }
+  if (! result)
+    name_error(frame, index);
 
   return result;
 }
@@ -102,9 +141,8 @@ static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   fast = frame->f_localsplus;
   result = PyCell_Get(fast[index]);
 
-  if (! result) {
-    PyErr_SetString(PyExc_NameError, "");
-  }
+  if (! result)
+    name_error(frame, index);
 
   return result;
 }

@@ -104,17 +104,7 @@ class LiveLocals(object):
 
 
     def __getitem__(self, key):
-        try:
-            return self._vars[key].get_var()
-
-        except NameError as ne:
-            # TODO: make the extension do this on its own.
-            # Issue #6
-
-            msg = "name %r is not defined" % key
-            ne.message = msg
-            ne.args = (msg, )
-            raise
+        return self._vars[key].get_var()
 
 
     def __setitem__(self, key, value):
@@ -141,9 +131,9 @@ class LiveLocals(object):
 
 
         def items(self):
-            for key, ref in self._vars.items():
+            for key, var in self._vars.items():
                 try:
-                    yield (key, ref.get_var())
+                    yield (key, var.get_var())
                 except NameError:
                     pass
 
@@ -168,9 +158,9 @@ class LiveLocals(object):
 
 
         def iteritems(self):
-            for key, ref in self._vars.iteritems():
+            for key, var in self._vars.iteritems():
                 try:
-                    yield (key, ref.get_var())
+                    yield (key, var.get_var())
                 except NameError:
                     pass
 
@@ -187,10 +177,10 @@ class LiveLocals(object):
 
 
     def update(self, mapping):
-        refs = self._vars
+        vars = self._vars
         for key, val in mapping.items():
-            if key in refs:
-                refs[key].set_var(val)
+            if key in vars:
+                vars[key].set_var(val)
 
 
     def setdefault(self, key, default=None):
