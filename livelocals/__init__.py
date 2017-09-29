@@ -105,17 +105,7 @@ class LiveLocals(object):
 
 
     def __getitem__(self, key):
-        try:
-            return self._refs[key].get_ref()
-
-        except NameError as ne:
-            # TODO: make the extension do this on its own.
-            # Issue #6
-
-            msg = "name %r is not defined" % key
-            ne.message = msg
-            ne.args = (msg, )
-            raise
+        return self._vars[key].get_var()
 
 
     def __setitem__(self, key, value):

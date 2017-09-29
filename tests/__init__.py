@@ -135,5 +135,21 @@ class TestLiveLocals(TestCase):
         self.assertFalse(ll1 is ll2)
 
 
+    def test_name_error(self):
+
+        def make_inner():
+            x = 100
+            del x
+            return livelocals()
+
+        ll = make_inner()
+
+        try:
+            ll["x"]
+        except NameError as ne:
+            self.assertEqual(ne.args[0], "name 'x' is not defined")
+        else:
+            self.assertFalse(True)
+
 #
 # The end.
