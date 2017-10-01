@@ -127,7 +127,7 @@ class LiveLocals(object):
 
 
         def values(self):
-            return map(lambda r: r[1], self.values())
+            return map(lambda r: r[1], self.items())
 
 
         def items(self):
