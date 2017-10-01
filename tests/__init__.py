@@ -230,10 +230,13 @@ class TestLiveLocals(TestCase):
         del ll
 
 
-    def test_map_interface(self):
+    def test_map_accessors(self):
         a = 100
         b = 200
         c = 300
+
+        z = 999
+        del z
 
         ll = livelocals()
 
@@ -261,6 +264,41 @@ class TestLiveLocals(TestCase):
         self.assertEqual(c, 321)
 
         del ll
+
+
+    def test_contains(self):
+        a = 100
+
+        ll = livelocals()
+
+        self.assertTrue("a" in ll)
+        self.assertTrue("c" in ll)
+        self.assertFalse("z" in ll)
+
+        # c is defined late, but it should still be a key in
+        # livelocals.
+        c = 300
+
+
+    def test_update(self):
+        a = 100
+        b = 200
+
+        c = 300
+        del c
+
+        ll = livelocals()
+
+        self.assertEqual(ll["a"], 100)
+        self.assertEqual(ll["b"], 200)
+        self.assertEqual(ll.get("c"), None)
+
+        ll.update({"a": 123, "b": 456, "c": 789, "z": 999})
+
+        self.assertEqual(ll["a"], 123)
+        self.assertEqual(ll["b"], 456)
+        self.assertEqual(ll["c"], 789)
+        self.assertRaises(KeyError, ll.__getitem__, "z")
 
 
 #
