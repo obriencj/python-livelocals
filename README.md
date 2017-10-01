@@ -52,11 +52,11 @@ For example, this will require the GC to run over the frame before the
 frame or any of its variables can be deallocated.
 ```python
 def such_leak(data):
-	x = do_something(data)
-	y = more_work(x)
-	l = livelocals()
-	...
-	return y
+    x = do_something(data)
+    y = more_work(x)
+    l = livelocals()
+    ...
+    return y
 ```
 
 The livelocals instance refers to the frame, and the frame never
@@ -67,12 +67,12 @@ To fix this, just make sure to delete any reference to the livelocals
 object.
 ```python
 def fine_dandy(data):
-	x = do_something(data)
-	y = more_work(x)
-	l = livelocals()
-	...
-	del l
-	return y
+    x = do_something(data)
+    y = more_work(x)
+    l = livelocals()
+    ...
+    del l
+    return y
 ```
 
 This decrements the livelocals ref count, letting it be deallocated
