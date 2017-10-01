@@ -87,7 +87,53 @@ class TestLiveLocals(TestCase):
         del ll
 
 
-    def test_del(self):
+    def test_fast_del(self):
+        ll = livelocals()
+
+        value = 100
+        self.assertEqual(value, 100)
+        self.assertEqual(ll["value"], 100)
+
+        del value
+
+        # can't use a lambda to look up value, that would make it a
+        # closure cell
+        try:
+            value
+        except NameError:
+            pass
+        else:
+            self.assertTrue(False)
+
+        try:
+            ll["value"]
+        except NameError:
+            pass
+        else:
+            self.assertTrue(False)
+
+        value = 200
+        self.assertEqual(value, 200)
+        self.assertEqual(ll["value"], 200)
+
+        del ll["value"]
+
+        try:
+            value
+        except NameError:
+            pass
+        else:
+            self.assertTrue(False)
+
+        try:
+            ll["value"]
+        except NameError:
+            pass
+        else:
+            self.assertTrue(False)
+
+
+    def test_closure_del(self):
 
         outer_value = 777
 
@@ -184,7 +230,7 @@ class TestLiveLocals(TestCase):
         del ll
 
 
-    def test_keys_values_items(self):
+    def test_map_interface(self):
         a = 100
         b = 200
         c = 300
@@ -204,18 +250,17 @@ class TestLiveLocals(TestCase):
         self.assertEqual(set(ll.values()),
                          set([100, 200, 300, ll, self]))
 
+        self.assertEqual(ll.get("a", 123), 100)
+
+        self.assertEqual(ll.setdefault("b", 321), 200)
+        self.assertEqual(b, 200)
+
+        del c
+        self.assertEqual(ll.get("c", 123), 123)
+        self.assertEqual(ll.setdefault("c", 321), 321)
+        self.assertEqual(c, 321)
+
         del ll
-
-
-    def test_items(self):
-        a = 100
-        b = 200
-        c = 300
-
-        ll = livelocals()
-
-        del ll
-
 
 
 #
