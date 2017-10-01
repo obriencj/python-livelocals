@@ -52,6 +52,8 @@ class TestLiveLocals(TestCase):
         ll["b"] = 400
         self.assertEqual(ll["b"], 400)
 
+        del ll
+
 
     def test_closure(self):
 
@@ -134,6 +136,9 @@ class TestLiveLocals(TestCase):
 
         self.assertFalse(ll1 is ll2)
 
+        del ll1
+        del ll2
+
 
     def test_name_error(self):
 
@@ -150,6 +155,68 @@ class TestLiveLocals(TestCase):
             self.assertEqual(ne.args[0], "name 'x' is not defined")
         else:
             self.assertFalse(True)
+
+        del ll
+
+
+    def test_generator(self):
+        def make_gen(value=None):
+            yield livelocals()
+            try:
+                while True:
+                    tmp = value
+                    del value
+                    yield tmp
+            except NameError:
+                pass
+
+        seq = make_gen(100)
+        ll = next(seq)
+
+        self.assertEqual(next(seq), 100)
+        ll["value"] = 101
+        self.assertEqual(next(seq), 101)
+        ll["value"] = 102
+        self.assertEqual(next(seq), 102)
+
+        self.assertRaises(StopIteration, next, seq)
+
+        del ll
+
+
+    def test_keys_values_items(self):
+        a = 100
+        b = 200
+        c = 300
+
+        ll = livelocals()
+
+        self.assertEqual(sorted(ll.items()),
+                         [("a", 100),
+                          ("b", 200),
+                          ("c", 300),
+                          ("ll", ll),
+                          ("self", self)])
+
+        self.assertEqual(sorted(ll.keys()),
+                         ["a", "b", "c", "ll", "self"])
+
+        self.assertEqual(set(ll.values()),
+                         set([100, 200, 300, ll, self]))
+
+        del ll
+
+
+    def test_items(self):
+        a = 100
+        b = 200
+        c = 300
+
+        ll = livelocals()
+
+        del ll
+
+
 
 #
 # The end.
