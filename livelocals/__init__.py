@@ -170,13 +170,23 @@ class LiveLocals(object):
 
 
     def get(self, key, default=None):
+        """
+        Returns the value of a scoped variable if it is declared and
+        assigned. If undeclared or unassigned, return the given
+        default value.
+        """
         try:
             return self._vars[key].get_var()
-        except NameError:
+        except (KeyError, NameError):
             return default
 
 
     def update(self, mapping):
+        """
+        Updates matching scoped variables to the value from mapping, if
+        any. All non-matching keys from mapping are ignored.
+        """
+
         vars = self._vars
         for key, val in mapping.items():
             if key in vars:
@@ -184,11 +194,20 @@ class LiveLocals(object):
 
 
     def setdefault(self, key, default=None):
+        """
+        Returns the value of a scoped variable if it is both declared and
+        assigned. If unassigned, assigns and returns the given default
+        value. If undeclared, simply returns the given default value.
+        """
+
         try:
             return self._vars[key].get_var()
+        except KeyError:
+            return default
         except NameError:
             self._vars[key].set_var(default)
             return default
+
 
 
 livelocals = LiveLocals
