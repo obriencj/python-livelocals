@@ -24,6 +24,17 @@ inside of a function however, things change. In a function, the
 variables.
 
 
+## Features
+
+A LiveLocals instance (obtained by calling `livelocals()`) can read
+and assign to all of the variables defined or consumed in a scope. It
+can also clear them.  It can function in concert with a closure or a
+generator.
+
+It cannot introduce new variables into the scope. It cannot read or
+alter global variables (but `globals()` already lets you do that).
+
+
 ## Circular Reference
 
 Sadly, Python doesn't allow weak references to frame objects. The
