@@ -213,5 +213,14 @@ class LiveLocals(object):
 livelocals = LiveLocals
 
 
+def generatorlocals(gen):
+    """
+    Given a Python generator object, return a livelocals for its
+    frame.
+    """
+
+    return livelocals(gen.gi_frame)
+
+
 #
 # The end.

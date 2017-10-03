@@ -28,8 +28,9 @@ variables.
 
 A LiveLocals instance (obtained by calling `livelocals()`) can read
 and assign to all of the variables defined or consumed in a scope. It
-can also clear them.  It can function in concert with a closure or a
-generator.
+can also clear them.  It will happily function in concert with a
+closure or a generator, allowing you to alter the lexical bindings at
+runtime.
 
 It cannot introduce new variables into the scope. It cannot read or
 alter global variables (but `globals()` already lets you do that).
