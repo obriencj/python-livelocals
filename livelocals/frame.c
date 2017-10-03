@@ -74,6 +74,33 @@ static void name_error(PyFrameObject *frame, int index) {
 }
 
 
+static inline int invalid_fast_index(PyCodeObject *code, int index) {
+  if (index < 0 || index >= code->co_nlocals) {
+
+    PyErr_Format(PyExc_ValueError, "fast index %i out of range", index);
+    return 1;
+
+  } else {
+    return 0;
+  }
+}
+
+
+static inline int invalid_cell_index(PyCodeObject *code, int index) {
+  if ((index < code->co_nlocals) ||
+      (index >= (code->co_nlocals +
+		 PyTuple_GET_SIZE(code->co_cellvars) +
+		 PyTuple_GET_SIZE(code->co_freevars)))) {
+
+    PyErr_Format(PyExc_ValueError, "cell index %i out of range", index);
+    return 1;
+
+  } else {
+    return 0;
+  }
+}
+
+
 static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -81,6 +108,9 @@ static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   PyObject *result = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
+    return NULL;
+
+  if (invalid_fast_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -104,6 +134,9 @@ static PyObject *frame_set_fast(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!iO", &PyFrame_Type, &frame, &index, &value))
     return NULL;
 
+  if (invalid_fast_index(frame->f_code, index))
+    return NULL;
+
   fast = frame->f_localsplus;
 
   Py_CLEAR(fast[index]);
@@ -122,6 +155,9 @@ static PyObject *frame_del_fast(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
+  if (invalid_fast_index(frame->f_code, index))
+    return NULL;
+
   fast = frame->f_localsplus;
   Py_CLEAR(fast[index]);
 
@@ -136,6 +172,9 @@ static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   PyObject *result = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
+    return NULL;
+
+  if (invalid_cell_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -157,6 +196,9 @@ static PyObject *frame_set_cell(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!iO", &PyFrame_Type, &frame, &index, &value))
     return NULL;
 
+  if (invalid_cell_index(frame->f_code, index))
+    return NULL;
+
   fast = frame->f_localsplus;
   PyCell_Set(fast[index], value);
 
@@ -170,6 +212,9 @@ static PyObject *frame_del_cell(PyObject *self, PyObject *args) {
   PyObject **fast = NULL;
 
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
+    return NULL;
+
+  if (invalid_cell_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
