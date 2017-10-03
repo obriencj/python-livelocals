@@ -226,22 +226,26 @@ static PyObject *frame_del_cell(PyObject *self, PyObject *args) {
 
 static PyMethodDef methods[] = {
   { "frame_get_fast", frame_get_fast, METH_VARARGS,
-    "" },
+    "Get the value of a fast variable in a frame. Raises a NameError"
+    " if the variable is not currently defined"},
 
   { "frame_set_fast", frame_set_fast, METH_VARARGS,
-    "" },
+    "Set the value of a fast variable in a frame." },
 
   { "frame_del_fast", frame_del_fast, METH_VARARGS,
-    "" },
+    "Clear the value of a fast variable in a frame, marking it as"
+    " undefined until a new value is set." },
 
   { "frame_get_cell", frame_get_cell, METH_VARARGS,
-    "" },
+    "Get the value of a cell or free variable in a frame. Raises a"
+    " NameError if the variable is not currently defined." },
 
   { "frame_set_cell", frame_set_cell, METH_VARARGS,
-    "" },
+    "Set the value of a cell or free variable in a frame." },
 
   { "frame_del_cell", frame_del_cell, METH_VARARGS,
-    "" },
+    "Clear the value of a cell or free variable in a frame, marking"
+    " it as undefined until a new value is set." },
 
   { NULL, NULL, 0, NULL },
 };
