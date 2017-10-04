@@ -16,13 +16,7 @@
 
 
 /**
-   This enables the overridding of locals and cells in a call frame,
-   and is used to enable the effect of pushing/popping local lexical
-   scopes.
-
-   TODO: there are all sorts of safety checks that need to be
-   added. Type checking, length checking. I'll get to those at some
-   point.
+   This enables direct access to fast, cell, and free vars on a frame.
 
    author: Christopher O'Brien  <obriencj@gmail.com>
    license: LGPL v.3
@@ -34,6 +28,10 @@
 #include <frameobject.h>
 
 
+/**
+   Given a frame and index, set a NameError exception with the
+   appropriate name string.
+ */
 static void name_error(PyFrameObject *frame, int index) {
   PyCodeObject *code = frame->f_code;
   PyObject *name = NULL;
@@ -74,33 +72,53 @@ static void name_error(PyFrameObject *frame, int index) {
 }
 
 
-static inline int invalid_fast_index(PyCodeObject *code, int index) {
+/**
+   Returns 1 if the index is valid within the code object's range of
+   fast locals. Otherwise, sets a ValueError to indicate that the
+   index is out-of-range and returns 0.
+ */
+static inline int valid_fast_index(PyCodeObject *code, int index) {
   if (index < 0 || index >= code->co_nlocals) {
 
     PyErr_Format(PyExc_ValueError, "fast index %i out of range", index);
-    return 1;
+    return 0;
 
   } else {
-    return 0;
+    return 1;
   }
 }
 
 
-static inline int invalid_cell_index(PyCodeObject *code, int index) {
+/**
+   Returns 1 if the index is valid within the code object's range of
+   cell or free locals. Otherwise, sets a ValueError to indicate that
+   the index is out-of-range and returns 0.
+ */
+static inline int valid_cell_index(PyCodeObject *code, int index) {
   if ((index < code->co_nlocals) ||
       (index >= (code->co_nlocals +
 		 PyTuple_GET_SIZE(code->co_cellvars) +
 		 PyTuple_GET_SIZE(code->co_freevars)))) {
 
     PyErr_Format(PyExc_ValueError, "cell index %i out of range", index);
-    return 1;
+    return 0;
 
   } else {
-    return 0;
+    return 1;
   }
 }
 
 
+/**
+   Returns the value of a frame's fast local variable at the given
+   index.
+
+   Raises a ValueError if the index is out of range, or a NameError if
+   the given variable is declared but not currently assigned a value.
+
+   From Python:
+   value = _frame.frame_get_fast(frame_obj, index)
+ */
 static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -110,7 +128,7 @@ static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  if (invalid_fast_index(frame->f_code, index))
+  if (! valid_fast_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -125,6 +143,15 @@ static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
 }
 
 
+/**
+   Assigns the value of a frame's fast local variable at the given
+   index.
+
+   Raises a ValueError if the index is out of range.
+
+   From Python:
+   _frame.frame_set_fast(frame_obj, index, value)
+ */
 static PyObject *frame_set_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -134,7 +161,7 @@ static PyObject *frame_set_fast(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!iO", &PyFrame_Type, &frame, &index, &value))
     return NULL;
 
-  if (invalid_fast_index(frame->f_code, index))
+  if (! valid_fast_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -147,6 +174,15 @@ static PyObject *frame_set_fast(PyObject *self, PyObject *args) {
 }
 
 
+/**
+   Clears the value of a frame's fast local variable at the given
+   index, leaving it declared but undefined.
+
+   Raises a ValueError if the index is out of range.
+
+   From Python:
+   _frame.frame_del_fast(frame_obj, index)
+ */
 static PyObject *frame_del_fast(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -155,7 +191,7 @@ static PyObject *frame_del_fast(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  if (invalid_fast_index(frame->f_code, index))
+  if (! valid_fast_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -165,6 +201,16 @@ static PyObject *frame_del_fast(PyObject *self, PyObject *args) {
 }
 
 
+/**
+   Returns the value of a frame's cell or free variable at the given
+   index.
+
+   Raises a ValueError if the index is out of range, or a NameError if
+   the given variable is declared but not currently assigned a value.
+
+   From Python:
+   value = _frame.frame_get_cell(frame_obj, index)
+ */
 static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -174,7 +220,7 @@ static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  if (invalid_cell_index(frame->f_code, index))
+  if (! valid_cell_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -187,6 +233,15 @@ static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
 }
 
 
+/**
+   Assigns the value of a frame's cell or free variable at the given
+   index.
+
+   Raises a ValueError if the index is out of range.
+
+   From Python:
+   _frame.frame_set_cell(frame_obj, index, value)
+ */
 static PyObject *frame_set_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   PyObject *value = NULL;
@@ -196,7 +251,7 @@ static PyObject *frame_set_cell(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!iO", &PyFrame_Type, &frame, &index, &value))
     return NULL;
 
-  if (invalid_cell_index(frame->f_code, index))
+  if (! valid_cell_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -206,6 +261,15 @@ static PyObject *frame_set_cell(PyObject *self, PyObject *args) {
 }
 
 
+/**
+   Clears the value of a frame's fast local variable at the given
+   index, leaving it declared but undefined.
+
+   Raises a ValueError if the index is out of range.
+
+   From Python:
+   _frame.frame_del_cell(frame_obj, index)
+ */
 static PyObject *frame_del_cell(PyObject *self, PyObject *args) {
   PyFrameObject *frame = NULL;
   int index = -1;
@@ -214,7 +278,7 @@ static PyObject *frame_del_cell(PyObject *self, PyObject *args) {
   if (! PyArg_ParseTuple(args, "O!i", &PyFrame_Type, &frame, &index))
     return NULL;
 
-  if (invalid_cell_index(frame->f_code, index))
+  if (! valid_cell_index(frame->f_code, index))
     return NULL;
 
   fast = frame->f_localsplus;
@@ -226,26 +290,32 @@ static PyObject *frame_del_cell(PyObject *self, PyObject *args) {
 
 static PyMethodDef methods[] = {
   { "frame_get_fast", frame_get_fast, METH_VARARGS,
-    "Get the value of a fast variable in a frame. Raises a NameError"
-    " if the variable is not currently defined"},
+    "Get the value of a fast variable in a frame. Raises a ValueError"
+    " if the index is out of range. Raises a NameError if the variable"
+    " is not currently defined."},
 
   { "frame_set_fast", frame_set_fast, METH_VARARGS,
-    "Set the value of a fast variable in a frame." },
+    "Set the value of a fast variable in a frame. Raises a ValueError"
+    " if the index is out of range." },
 
   { "frame_del_fast", frame_del_fast, METH_VARARGS,
     "Clear the value of a fast variable in a frame, marking it as"
-    " undefined until a new value is set." },
+    " undefined until a new value is set. Raises a ValueError if the"
+    " index is out of range." },
 
   { "frame_get_cell", frame_get_cell, METH_VARARGS,
     "Get the value of a cell or free variable in a frame. Raises a"
-    " NameError if the variable is not currently defined." },
+    " ValueError if the index is out of range. Raises a NameError if"
+    " the variable is not currently defined." },
 
   { "frame_set_cell", frame_set_cell, METH_VARARGS,
-    "Set the value of a cell or free variable in a frame." },
+    "Set the value of a cell or free variable in a frame. Raises a"
+    " ValueError if the index is out of range." },
 
   { "frame_del_cell", frame_del_cell, METH_VARARGS,
     "Clear the value of a cell or free variable in a frame, marking"
-    " it as undefined until a new value is set." },
+    " it as undefined until a new value is set. Raises a ValueError if"
+    " the index is out of range." },
 
   { NULL, NULL, 0, NULL },
 };
