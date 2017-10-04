@@ -29,11 +29,10 @@
 
 
 /**
-   Given a frame and index, set a NameError exception with the
-   appropriate name string.
+   Given a code object and index, set a NameError exception with the
+   appropriate variable name in the exception's message string.
  */
-static void name_error(PyFrameObject *frame, int index) {
-  PyCodeObject *code = frame->f_code;
+static void name_error(PyCodeObject *code, int index) {
   PyObject *name = NULL;
   int count = 0;
 
@@ -137,7 +136,7 @@ static PyObject *frame_get_fast(PyObject *self, PyObject *args) {
   Py_XINCREF(result);
 
   if (! result)
-    name_error(frame, index);
+    name_error(frame->f_code, index);
 
   return result;
 }
@@ -227,7 +226,7 @@ static PyObject *frame_get_cell(PyObject *self, PyObject *args) {
   result = PyCell_Get(fast[index]);
 
   if (! result)
-    name_error(frame, index);
+    name_error(frame->f_code, index);
 
   return result;
 }
