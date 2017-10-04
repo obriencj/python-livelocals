@@ -287,6 +287,21 @@ class LiveLocals(object):
             return default
 
 
+    def clear(self):
+        """
+        Releases the references to the underlying frame, and removes any
+        references in the frame to this livelocals by clearing the
+        variable.
+        """
+
+        for key, val in self.items():
+            if val is self:
+                self._vars[key].del_var()
+                break
+
+        self._vars.clear()
+
+
 # This is our default cache. Frames can't be weakreferenced, so we
 # keep a weak ref to the LiveLocals instance instead.
 _cache = WeakValueDictionary()
