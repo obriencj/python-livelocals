@@ -44,13 +44,8 @@ frame they were invoked from. If that frame also happens to have a
 lingering reference to the livelocals object, then a circular
 reference exists.
 
-The Python GC is able to collect circular references. It knows how to
-traverse frame instances and break those links if the cluster of
-objects are isolated from running code. However that's somewhat
-expensive, and we can prevent it easily.
-
-For example, this will require the GC to run over the frame before the
-frame or any of its variables can be deallocated.
+For example, this will create a circular reference, preventing the
+frame or any of its variables from being deallocated.
 ```python
 def such_leak(data):
     x = do_something(data)
