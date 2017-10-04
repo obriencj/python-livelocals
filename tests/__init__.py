@@ -25,6 +25,7 @@ license: LGPL v.3
 
 from livelocals import livelocals
 from unittest import TestCase
+from weakref import WeakValueDictionary
 
 
 class TestLiveLocals(TestCase):
@@ -279,6 +280,8 @@ class TestLiveLocals(TestCase):
         # livelocals.
         c = 300
 
+        del ll
+
 
     def test_update(self):
         a = 100
@@ -299,6 +302,34 @@ class TestLiveLocals(TestCase):
         self.assertEqual(ll["b"], 456)
         self.assertEqual(ll["c"], 789)
         self.assertRaises(KeyError, ll.__getitem__, "z")
+
+        del ll
+
+
+    def test_clear(self):
+        cache = WeakValueDictionary()
+
+        def create_closure(value=None):
+            ll = livelocals(_cache=cache)
+            return ll
+
+        ll1 = create_closure(100)
+        ll2 = create_closure(200)
+
+        self.assertEqual(ll1["ll"], ll1)
+        self.assertEqual(ll2["ll"], ll2)
+        self.assertEqual(len(cache), 2)
+
+        ll1.clear()
+        ll2.clear()
+
+        self.assertEqual(ll1.get("ll"), None)
+        self.assertEqual(ll2.get("ll"), None)
+
+        del ll1
+        del ll2
+
+        self.assertEqual(len(cache), 0)
 
 
 #
