@@ -75,6 +75,10 @@ This decrements the livelocals ref count, letting it be deallocated
 right away, which also clears the references it had to the frame, so
 it can be similarly deallocated.
 
+A livelocals instance also has a `clear()` method which will release
+internal references to the frame, and drop the frame's reference to
+the livelocals object if one exists.
+
 
 ## Supported Versions
 
