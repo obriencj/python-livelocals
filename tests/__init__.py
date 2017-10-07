@@ -23,7 +23,7 @@ license: LGPL v.3
 """
 
 
-from livelocals import livelocals
+from livelocals import livelocals, localvar, getvar, setvar, delvar
 from unittest import TestCase
 from weakref import WeakValueDictionary
 
@@ -330,6 +330,65 @@ class TestLiveLocals(TestCase):
         del ll2
 
         self.assertEqual(len(cache), 0)
+
+
+class TestLocalVar(TestCase):
+
+    def test_localvar(self):
+
+        cheddar = 100
+        var = localvar("cheddar")
+
+        self.assertEqual(cheddar, 100)
+        self.assertEqual(var.getvar(), 100)
+
+        var.setvar(200)
+
+        self.assertEqual(cheddar, 200)
+        self.assertEqual(var.getvar(), 200)
+
+        var.delvar()
+        self.assertRaises(NameError, var.getvar)
+
+        del var
+
+
+    def test_getvar(self):
+
+        self.assertRaises(NameError, getvar, "cheddar")
+        self.assertEqual(getvar("cheddar", 123), 123)
+
+        cheddar = 100
+
+        self.assertEqual(getvar("cheddar"), 100)
+
+        cheddar = 200
+
+        self.assertEqual(getvar("cheddar"), 200)
+
+        del cheddar
+
+        self.assertRaises(NameError, getvar, "cheddar")
+        self.assertEqual(getvar("cheddar", 321), 321)
+
+
+    def test_setvar(self):
+
+        cheddar = 100
+
+        setvar("cheddar", 200)
+
+        self.assertEqual(cheddar, 200)
+
+
+    def test_delvar(self):
+
+        cheddar = 100
+        self.assertEqual(getvar("cheddar"), 100)
+
+        delvar("cheddar")
+
+        self.assertRaises(NameError, getvar, "cheddar")
 
 
 #
