@@ -38,40 +38,154 @@ if (2, 0) <= version_info < (3, 0):
     from itertools import imap
 
 
-__all__ = ("LiveLocals", "livelocals", "generatorlocals", )
+__all__ = ("LiveLocals", "livelocals", "generatorlocals",
+           "LocalVar", "localvar", "getvar", "setvar", "delvar", )
+
+
+class RaiseError(object):
+    def __repr__(self):
+        return "<raise NameError>"
+
+
+_raise_error = RaiseError()
+
+
+del RaiseError
 
 
 # simple way to hold the getter, setter, and clear functions for each
 # var in a frame.
-_frame_var = namedtuple("frame_var", ("get_var", "set_var", "del_var", ))
+LocalVar = namedtuple("LocalVar", ("getvar", "setvar", "delvar",
+                                   "frame", "name", ))
 
 
-def _create_fast_var(frame, index):
+def _local_fast(frame, index, name):
     """
     Create an object with three functions for getting, setting, and
     clearing a fast var with the given index on the specified frame.
     """
 
-    return _frame_var(partial(frame_get_fast, frame, index),
-                      partial(frame_set_fast, frame, index),
-                      partial(frame_del_fast, frame, index))
+    return LocalVar(partial(frame_get_fast, frame, index),
+                    partial(frame_set_fast, frame, index),
+                    partial(frame_del_fast, frame, index),
+                    frame, name)
 
 
-def _create_cell_var(frame, index):
+def _local_cell(frame, index, name):
     """
     Create an object with three functions for getting, setting, and
     clearing a cell or free var with the given index on the specified
     frame.
     """
 
-    return _frame_var(partial(frame_get_cell, frame, index),
-                      partial(frame_set_cell, frame, index),
-                      partial(frame_del_cell, frame, index))
+    return LocalVar(partial(frame_get_cell, frame, index),
+                    partial(frame_set_cell, frame, index),
+                    partial(frame_del_cell, frame, index),
+                    frame, name)
+
+
+def localvar(name, frame=None):
+    """
+    Returns a LocalVar namedtuple instance with accessors for getting,
+    setting, and clearing the relevant variable in its frame. If no
+    local variable with a matching name was found, returns None.
+
+    If frame is None, the calling frame is used.
+    """
+
+    if frame is None:
+        frame = currentframe().f_back
+
+    code = frame.f_code
+
+    i = -1
+    for i, n in enumerate(code.co_varnames):
+        if n == name:
+            return _local_fast(frame, i, n)
+
+    for i, n in enumerate(code.co_cellvars, i + 1):
+        if n == name:
+            return _local_cell(frame, i, n)
+
+    for i, n in enumerate(code.co_freevars, i + 1):
+        if n == name:
+            return _local_cell(frame, i, n)
+
+    return None
+
+
+def getvar(name, default=_raise_error, frame=None):
+    """
+    Get the value of a frame's local variable with the given name. If
+    no matching variable was found, or if the variable was found but
+    currently holds no value, returns the default.
+
+    If frame is None, the calling frame is used.
+    """
+
+    if frame is None:
+        frame = currentframe().f_back
+
+    var = localvar(name, frame)
+
+    if var is None:
+        if default is _raise_error:
+            raise NameError("name %r is not defined" % name)
+        else:
+            return default
+
+    elif default is _raise_error:
+        return var.getvar()
+
+    else:
+        try:
+            return var.getvar()
+        except NameError:
+            return default
+
+
+def setvar(name, value, frame=None):
+    """
+    Assign the value of a frame's local variable with the given
+    name. If no matching variable was found, does nothing.
+
+    If frame is None, the calling frame is used.
+    """
+
+    if frame is None:
+        frame = currentframe().f_back
+
+    var = localvar(name, frame)
+    if var is not None:
+        var.setvar(value)
+
+
+def delvar(name, frame=None):
+    """
+    Clear the value of a frame's local variable with the given
+    name. If no matching variable was found, does nothing.
+
+    If frame is None, the calling frame is used.
+    """
+
+    if frame is None:
+        frame = currentframe().f_back
+
+    var = localvar(name, frame)
+    if var is not None:
+        var.delvar()
 
 
 class LiveLocals(object):
     """
     Living view of a frame's local fast, free, and cell variables.
+
+    This instance will keep a reference to the frame alive. If the
+    frame in turn holds a reference to this instance, a circular
+    reference will be created which will prevent the frame and all its
+    variables from being deallocated. The `clear()` method of this
+    instance will release all references to the frame, and will remove
+    any references the frame may have to the instance as well.
     """
 
     __slots__ = ("_frame_id", "_vars", "__weakref__", )
@@ -89,13 +203,13 @@ class LiveLocals(object):
 
         i = -1
         for i, name in enumerate(code.co_varnames):
-            vars[name] = _create_fast_var(frame, i)
+            vars[name] = _local_fast(frame, i, name)
 
         for i, name in enumerate(code.co_cellvars, i + 1):
-            vars[name] = _create_cell_var(frame, i)
+            vars[name] = _local_cell(frame, i, name)
 
         for i, name in enumerate(code.co_freevars, i + 1):
-            vars[name] = _create_cell_var(frame, i)
+            vars[name] = _local_cell(frame, i, name)
 
 
     def __repr__(self):
@@ -113,7 +227,7 @@ class LiveLocals(object):
         currently defined, raises a NameError.
         """
 
-        return self._vars[key].get_var()
+        return self._vars[key].getvar()
 
 
     def __setitem__(self, key, value):
@@ -126,7 +240,7 @@ class LiveLocals(object):
         raises a KeyError.
         """
 
-        return self._vars[key].set_var(value)
+        return self._vars[key].setvar(value)
 
 
     def __delitem__(self, key):
@@ -139,7 +253,7 @@ class LiveLocals(object):
         raises a KeyError.
         """
 
-        return self._vars[key].del_var()
+        return self._vars[key].delvar()
 
 
     def __contains__(self, key):
@@ -162,6 +276,7 @@ class LiveLocals(object):
             frame. Omits variables which are declared but not
             currently defined.
             """
+
             return map(lambda r: r[0], self.items())
 
 
@@ -170,6 +285,7 @@ class LiveLocals(object):
             Iterator of the values of defined variables for the underlying
             frame.
             """
+
             return map(lambda r: r[1], self.items())
 
 
@@ -180,9 +296,10 @@ class LiveLocals(object):
             not set to a value (ie. declared but undefined) are
             omitted.
             """
+
             for key, var in self._vars.items():
                 try:
-                    yield (key, var.get_var())
+                    yield (key, var.getvar())
                 except NameError:
                     pass
 
@@ -196,6 +313,7 @@ class LiveLocals(object):
             frame. Omits variables which are declared but not
             currently defined.
             """
+
             return imap(lambda r: r[0], self.iteritems())
 
 
@@ -205,6 +323,7 @@ class LiveLocals(object):
             frame. Omits variables which are declared but not
             currently defined.
             """
+
             return list(self.iterkeys())
 
 
@@ -213,6 +332,7 @@ class LiveLocals(object):
             Iterator of the values of defined variables for the underlying
             frame.
             """
+
             return imap(lambda r: r[1], self.iteritems())
 
 
@@ -220,6 +340,7 @@ class LiveLocals(object):
             """
             List of the values of defined variables for the underlying frame.
             """
+
             return list(self.itervalues())
 
 
@@ -230,9 +351,10 @@ class LiveLocals(object):
             not set to a value (ie. declared but undefined) are
             omitted.
             """
+
             for key, var in self._vars.iteritems():
                 try:
-                    yield (key, var.get_var())
+                    yield (key, var.getvar())
                 except NameError:
                     pass
 
@@ -253,10 +375,20 @@ class LiveLocals(object):
         assigned. If undeclared or unassigned, return the given
         default value.
         """
+
         try:
-            return self._vars[key].get_var()
+            return self._vars[key].getvar()
         except (KeyError, NameError):
             return default
+
+
+    def localvar(self, key):
+        """
+        Returns the underlying LocalVar namedtuple for the given key, or
+        None if that variable isn't in this scope.
+        """
+
+        return self._vars.get(key, None)
 
 
     def update(self, mapping):
@@ -268,7 +400,7 @@ class LiveLocals(object):
         vars = self._vars
         for key, val in mapping.items():
             if key in vars:
-                vars[key].set_var(val)
+                vars[key].setvar(val)
 
 
     def setdefault(self, key, default=None):
@@ -279,11 +411,11 @@ class LiveLocals(object):
         """
 
         try:
-            return self._vars[key].get_var()
+            return self._vars[key].getvar()
         except KeyError:
             return default
         except NameError:
-            self._vars[key].set_var(default)
+            self._vars[key].setvar(default)
             return default
 
 
@@ -296,7 +428,7 @@ class LiveLocals(object):
 
         for key, val in self.items():
             if val is self:
-                self._vars[key].del_var()
+                self._vars[key].delvar()
                 break
 
         self._vars.clear()
