@@ -36,6 +36,67 @@ It cannot introduce new variables into the scope. It cannot read or
 alter global variables (but `globals()` already lets you do that).
 
 
+## Usage
+
+
+### `livelocals`
+
+```python
+def working_loop():
+    foo = 100
+    bar = 200
+    baz = True
+    keep_running = True
+
+    while keep_running:
+        phone_home(foo, bar, baz)
+        data = do_important_stuff(foo, bar)
+        livelocals().update(data)
+```
+
+In the above contrived example, the `data` mapping returned by the
+imaginary `do_important_stuff` call contains new values for the local
+scope of the working loop. Instead of extracting the keys and
+assigning them to the local scope individually, data may contain ANY
+of the local variables for the working loop, and they will be
+reassigned to their new values.
+
+There's an optional `allow` argument to the `update` method, which
+will limit the modification of local variable to only those which are
+either it a specified list, or pass a filtering function.
+
+
+### `generatorlocals`
+
+The `generatorlocals` function allows you to access the livelocals of
+a running generator.
+
+```python
+def working_loop():
+    foo = 100
+    bar = 200
+    tweak = False
+    while True:
+        yield do_important_stuff(foo, bar, tweak)
+
+gen = working_loop()
+for X in gen:
+    if X == "cheddar cheese":
+        generatorlocals(gen)["tweak"] = True
+```
+
+
+### `localvar`
+
+If you only need access to a single variable by name, the `localvar`
+function will provide a simple interface for getting, setting, or
+clearing it.
+
+```python
+...
+```
+
+
 ## Circular Reference
 
 Sadly, Python doesn't allow weak references to frame objects. The
