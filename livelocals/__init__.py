@@ -34,8 +34,10 @@ from livelocals._frame import \
     frame_get_cell, frame_set_cell, frame_del_cell
 
 
-if (2, 0) <= version_info < (3, 0):
-    from itertools import imap
+try:
+    from itertools import ifilter
+except ImportError:
+    ifilter = filter
 
 
 __all__ = ("LiveLocals", "livelocals", "generatorlocals",
@@ -277,7 +279,7 @@ class LiveLocals(object):
             currently defined.
             """
 
-            return map(lambda r: r[0], self.items())
+            return (key for key, value in self.items())
 
 
         def values(self):
@@ -286,7 +288,7 @@ class LiveLocals(object):
             frame.
             """
 
-            return map(lambda r: r[1], self.items())
+            return (value for key, value in self.items())
 
 
         def items(self):
@@ -314,7 +316,7 @@ class LiveLocals(object):
             currently defined.
             """
 
-            return imap(lambda r: r[0], self.iteritems())
+            return (key for key, value in self.iteritems())
 
 
         def keys(self):
@@ -324,7 +326,7 @@ class LiveLocals(object):
             currently defined.
             """
 
-            return list(self.iterkeys())
+            return [key for key, value in self.iteritems()]
 
 
         def itervalues(self):
@@ -333,7 +335,7 @@ class LiveLocals(object):
             frame.
             """
 
-            return imap(lambda r: r[1], self.iteritems())
+            return (value for key, value in self.iteritems())
 
 
         def values(self):
@@ -341,7 +343,7 @@ class LiveLocals(object):
             List of the values of defined variables for the underlying frame.
             """
 
-            return list(self.itervalues())
+            return [value for key, value in self.iteritems()]
 
 
         def iteritems(self):
@@ -391,14 +393,33 @@ class LiveLocals(object):
         return self._vars.get(key, None)
 
 
-    def update(self, mapping):
+    def update(self, mapping, allow=None):
         """
         Updates matching scoped variables to the value from mapping, if
         any. All non-matching keys from mapping are ignored.
+
+        If allow is specified, it may be a unary function or a
+        sequence. If it is a function, then only keys from mapping
+        which return True when passed to the function will be used to
+        update the local variables. If it is a sequence, then only
+        keys from mapping which are in the sequence will be used to
+        update the local variables.
         """
 
+        if allow is None:
+            source = mapping.items()
+
+        elif callable(allow):
+            source = ((key, value) for key, value in mapping.items()
+                      if allow(key))
+
+        else:
+            source = ((key, value) for key, value in mapping.items()
+                      if key in allow)
+
         vars = self._vars
-        for key, val in mapping.items():
+
+        for key, val in source:
             if key in vars:
                 vars[key].setvar(val)
 
