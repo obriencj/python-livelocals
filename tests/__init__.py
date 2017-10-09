@@ -306,6 +306,41 @@ class TestLiveLocals(TestCase):
         del ll
 
 
+    def test_update_allow(self):
+        ll = livelocals()
+
+        a = 100
+        b = 200
+        c = 300
+
+        self.assertEqual(a, 100)
+        self.assertEqual(b, 200)
+        self.assertEqual(c, 300)
+
+        ll.update({"a": 123, "b": 456, "c": 789}, allow=("a", "b"))
+
+        self.assertEqual(a, 123)
+        self.assertEqual(b, 456)
+        self.assertEqual(c, 300)
+
+        a = 100
+        b = 200
+        c = 300
+
+        self.assertEqual(a, 100)
+        self.assertEqual(b, 200)
+        self.assertEqual(c, 300)
+
+        def allowfn(name):
+            return (name == "b" or name == "c")
+
+        ll.update({"a": 123, "b": 456, "c": 789}, allow=allowfn)
+
+        self.assertEqual(a, 100)
+        self.assertEqual(b, 456)
+        self.assertEqual(c, 789)
+
+
     def test_clear(self):
         cache = WeakValueDictionary()
 
