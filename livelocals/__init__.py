@@ -34,12 +34,6 @@ from livelocals._frame import \
     frame_get_cell, frame_set_cell, frame_del_cell
 
 
-try:
-    from itertools import ifilter
-except ImportError:
-    ifilter = filter
-
-
 __all__ = ("LiveLocals", "livelocals", "generatorlocals",
            "LocalVar", "localvar", "getvar", "setvar", "delvar", )
 
@@ -49,6 +43,7 @@ class RaiseError(object):
         return "<raise NameError>"
 
 
+# this is just a fun sentinel default value for getvar.
 _raise_error = RaiseError()
 
 
@@ -120,7 +115,8 @@ def getvar(name, default=_raise_error, frame=None):
     """
     Get the value of a frame's local variable with the given name. If
     no matching variable was found, or if the variable was found but
-    currently holds no value, returns the default.
+    currently holds no value, returns a default value if one was
+    supplied, otherwise raises a NameError.
 
     If frame is None, the calling frame is used.
     """
