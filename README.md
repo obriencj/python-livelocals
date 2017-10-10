@@ -36,13 +36,91 @@ It cannot introduce new variables into the scope. It cannot read or
 alter global variables (but `globals()` already lets you do that).
 
 
+## Usage
+
+
+### `livelocals`
+
+```python
+def working_loop(foo=100, bar=200):
+    baz = True
+    keep_running = True
+
+    while keep_running:
+        phone_home(foo, bar, baz)
+        data = do_important_stuff(foo, bar)
+        livelocals().update(data)
+```
+
+In the above contrived example, the `data` mapping returned by the
+imaginary `do_important_stuff` call contains new values for the local
+scope of the working loop. Instead of extracting the keys and
+assigning them to the local scope individually, data may contain ANY
+of the local variables for the working loop, and they will be
+reassigned to their new values.
+
+There's an optional `allow` argument to the `update` method, which
+will limit the modification of local variable to only those which are
+either it a specified list, or pass a filtering function.
+
+```python
+def working_loop(foo=100, bar=200):
+    baz = True
+    keep_running = True
+
+    while keep_running:
+        phone_home(foo, bar, baz)
+        data = do_important_stuff(foo, bar)
+        livelocals().update(data, allow=("baz", "keep_running"))
+```
+
+
+### `generatorlocals`
+
+The `generatorlocals` function allows you to access the livelocals of
+a running generator function.
+
+```python
+def working_loop(foo=100, bar=200):
+    tweak = False
+    while True:
+        yield do_important_stuff(foo, bar, tweak)
+
+gen = working_loop()
+
+for X in gen:
+    if X == "cheddar cheese":
+        # special case, the working_loop yielded cheddar cheese!
+        # Better enable tweak mode!
+        generatorlocals(gen)["tweak"] = True
+```
+
+
+### `localvar`
+
+If you only need access to a single variable by name, the `localvar`
+function will provide a simple interface for getting, setting, or
+clearing it.
+
+```python
+def working_loop(foo=100, bar=200):
+
+    # some distant subsystem might kick off a callback, and we want
+    # to make that value our new bar
+	hook_some_callback(localvar("bar").setvar)
+
+	while bar < 900:
+		do_important_stuff(foo, bar)
+```
+
+
 ## Circular Reference
 
 Sadly, Python doesn't allow weak references to frame objects. The
-livelocals objects therefore have strong references to the particular
-frame they were invoked from. If that frame also happens to have a
-lingering reference to the livelocals object, then a circular
-reference exists.
+livelocals and localvar objects therefore have strong references to
+the particular frame they were invoked from. If that frame also
+happens to have a lingering reference to the livelocals or localvar
+objects, then a circular reference exists.
 
 For example, this will create a circular reference, preventing the
 frame or any of its variables from being deallocated.
@@ -59,8 +137,8 @@ The livelocals instance refers to the frame, and the frame never
 cleared the value of the variable `l` which is a reference to the
 livelocals. Circular reference!
 
-To fix this, just make sure to delete any reference to the livelocals
-object.
+To fix this, just make sure to delete any reference to livelocals or
+localvar objects.
 ```python
 def fine_dandy(data):
     x = do_something(data)
