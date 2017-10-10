@@ -389,7 +389,7 @@ class TestLocalVar(TestCase):
         del var
 
 
-    def test_getvar(self):
+    def test_getvar_fast(self):
 
         self.assertRaises(NameError, getvar, "cheddar")
         self.assertEqual(getvar("cheddar", 123), 123)
@@ -403,6 +403,28 @@ class TestLocalVar(TestCase):
         self.assertEqual(getvar("cheddar"), 200)
 
         del cheddar
+
+        self.assertRaises(NameError, getvar, "cheddar")
+        self.assertEqual(getvar("cheddar", 321), 321)
+
+
+    def test_getvar_cell(self):
+
+        def junk():
+            return cheddar
+
+        self.assertRaises(NameError, getvar, "cheddar")
+        self.assertEqual(getvar("cheddar", 123), 123)
+
+        cheddar = 100
+
+        self.assertEqual(getvar("cheddar"), 100)
+
+        cheddar = 200
+
+        self.assertEqual(getvar("cheddar"), 200)
+
+        delvar("cheddar")
 
         self.assertRaises(NameError, getvar, "cheddar")
         self.assertEqual(getvar("cheddar", 321), 321)
