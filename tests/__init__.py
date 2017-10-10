@@ -384,6 +384,7 @@ class TestLocalVar(TestCase):
 
         var.delvar()
         self.assertRaises(NameError, var.getvar)
+        self.assertEqual(var.getvar(321), 321)
 
         del var
 
