@@ -140,10 +140,7 @@ def getvar(name, default=_raise_error, frame=None):
         return var.getvar()
 
     else:
-        try:
-            return var.getvar()
-        except NameError:
-            return default
+        return var.getvar(default)
 
 
 def setvar(name, value, frame=None):
@@ -379,8 +376,8 @@ class LiveLocals(object):
         """
 
         try:
-            return self._vars[key].getvar()
-        except (KeyError, NameError):
+            return self._vars[key].getvar(default)
+        except KeyError:
             return default
 
 
