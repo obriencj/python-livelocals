@@ -107,10 +107,10 @@ def working_loop(foo=100, bar=200):
 
     # some distant subsystem might kick off a callback, and we want
     # to make that value our new bar
-	hook_some_callback(localvar("bar").setvar)
+    hook_some_callback(localvar("bar").setvar)
 
-	while bar < 900:
-		do_important_stuff(foo, bar)
+    while bar < 900:
+        do_important_stuff(foo, bar)
 ```
 
 
