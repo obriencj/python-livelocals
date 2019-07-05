@@ -367,6 +367,30 @@ class TestLiveLocals(TestCase):
         self.assertEqual(len(cache), 0)
 
 
+    def test_with(self):
+        cache = WeakValueDictionary()
+
+        a = 100
+        b = 200
+
+        with livelocals(_cache=cache) as ll:
+            ll["a"] += 1
+            ll["b"] += 2
+
+            def get_ll():
+                return ll
+
+            self.assertEqual(a, 101)
+            self.assertEqual(b, 202)
+            self.assertTrue(ll is get_ll())
+
+        self.assertEqual(a, 101)
+        self.assertEqual(b, 202)
+        self.assertRaises(NameError, get_ll)
+
+        self.assertEqual(len(cache), 0)
+
+
 class TestLocalVar(TestCase):
 
     def test_localvar(self):

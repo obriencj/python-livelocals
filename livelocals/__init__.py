@@ -207,6 +207,14 @@ class LiveLocals(object):
             vars[name] = _local_cell(frame, i, name)
 
 
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, _tb_type, _tb_value, _tb_traceback):
+        self.clear()
+
+
     def __repr__(self):
         return "<livelocals for frame at 0x%08x>" % self._frame_id
 
