@@ -162,11 +162,11 @@ keyword `with`, which will call `clear()` when the context exits.
 ```python
 def fine_dandy(data):
     x = do_something(data)
-	with livelocals() as ll:
-	    y = send_locals_elsewhere(ll)
-	    ...
-	# ll has been cleared safely
-	return y
+    with livelocals() as ll:
+        y = send_locals_elsewhere(ll)
+        ...
+    # ll has been cleared safely
+    return y
 ```
 
 
