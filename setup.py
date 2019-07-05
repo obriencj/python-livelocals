@@ -29,13 +29,25 @@ except ImportError:
     from distutils.core import setup, Extension
 
 
+PYTHON_SUPPORTED_VERSIONS = (
+    ">=2.6",
+    "!=3.0.*", "!=3.1.*", "!=3.2.*", "!=3.3.*",
+    "<4",
+)
+
+
 TROVE_CLASSIFIERS = (
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved"
     " :: GNU Lesser General Public License v3 or later (LGPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 2.6",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
     "Topic :: Software Development :: Libraries :: Python Modules",
 )
 
@@ -43,7 +55,7 @@ ext_frame = Extension("livelocals._frame", ["livelocals/frame.c"])
 
 
 setup(name = "livelocals",
-      version = "0.9.0",
+      version = "1.0.0",
 
       packages = ["livelocals"],
       ext_modules = [ext_frame],
@@ -60,6 +72,7 @@ setup(name = "livelocals",
 
       description = "Live Locals for Python",
 
+      python_requires = ", ".join(PYTHON_SUPPORTED_VERSIONS),
       classifiers = TROVE_CLASSIFIERS)
 
 
