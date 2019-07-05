@@ -157,6 +157,18 @@ A livelocals instance also has a `clear()` method which will release
 internal references to the frame, and drop the frame's reference to
 the livelocals object if one exists.
 
+In addition, livelocals instances can be used via the context manager
+keyword `with`, which will call `clear()` when the context exits.
+```python
+def fine_dandy(data):
+    x = do_something(data)
+	with livelocals() as ll:
+	    y = send_locals_elsewhere(ll)
+	    ...
+	# ll has been cleared safely
+	return y
+```
+
 
 ## Supported Versions
 
